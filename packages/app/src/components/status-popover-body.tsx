@@ -1,8 +1,10 @@
 import { Button } from "@opencode-ai/ui/button"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { Icon } from "@opencode-ai/ui/icon"
+import { Spinner } from "@opencode-ai/ui/spinner"
 import { Switch } from "@opencode-ai/ui/switch"
 import { Tabs } from "@opencode-ai/ui/tabs"
+import { Tooltip } from "@opencode-ai/ui/tooltip"
 import { useMutation, useQueryClient } from "@tanstack/solid-query"
 import { showToast } from "@opencode-ai/ui/toast"
 import { useNavigate } from "@solidjs/router"
@@ -161,6 +163,7 @@ const useMcpToggleMutation = () => {
 export function StatusPopoverBody(props: { shown: Accessor<boolean> }) {
   const sync = useSync()
   const server = useServer()
+  const sdk = useSDK()
   const platform = usePlatform()
   const dialog = useDialog()
   const language = useLanguage()
@@ -206,6 +209,19 @@ export function StatusPopoverBody(props: { shown: Accessor<boolean> }) {
   const pluginCount = createMemo(() => plugins().length)
   const pluginEmpty = createMemo(() => pluginEmptyMessage(language.t("dialog.plugins.empty"), "opencode.json"))
 
+  const childSessions = createMemo(() => sync.data.session.filter((s) => !!s.parentID))
+  const runningTasks = createMemo(() =>
+    childSessions().filter((s) => {
+      const status = sync.data.session_status[s.id]
+      return !!status && status.type !== "idle"
+    }),
+  )
+  const taskCount = createMemo(() => runningTasks().length)
+
+  const cancelTask = async (sessionID: string) => {
+    await sdk.client.session.abort({ sessionID }).catch(fail)
+  }
+
   return (
     <div class="flex items-center gap-1 w-[360px] rounded-xl shadow-[var(--shadow-lg-border-base)]">
       <Tabs
@@ -232,6 +248,10 @@ export function StatusPopoverBody(props: { shown: Accessor<boolean> }) {
           <Tabs.Trigger value="plugins" data-slot="tab" class="text-12-regular">
             {pluginCount() > 0 ? `${pluginCount()} ` : ""}
             {language.t("status.popover.tab.plugins")}
+          </Tabs.Trigger>
+          <Tabs.Trigger value="tasks" data-slot="tab" class="text-12-regular">
+            {taskCount() > 0 ? `${taskCount()} ` : ""}
+            {language.t("status.popover.tab.tasks")}
           </Tabs.Trigger>
         </Tabs.List>
 
@@ -395,6 +415,55 @@ export function StatusPopoverBody(props: { shown: Accessor<boolean> }) {
                       <span class="text-14-regular text-text-base truncate">{plugin}</span>
                     </div>
                   )}
+                </For>
+              </Show>
+            </div>
+          </div>
+        </Tabs.Content>
+
+        <Tabs.Content value="tasks">
+          <div class="flex flex-col px-2 pb-2">
+            <div class="flex flex-col p-3 bg-background-base rounded-sm min-h-14">
+              <Show
+                when={runningTasks().length > 0}
+                fallback={
+                  <div class="text-14-regular text-text-base text-center my-auto">
+                    {language.t("status.popover.tasks.empty")}
+                  </div>
+                }
+              >
+                <For each={runningTasks()}>
+                  {(session) => {
+                    const status = () => sync.data.session_status[session.id]
+                    const isBusy = () => status()?.type === "busy"
+                    const statusLabel = () => {
+                      const s = status()
+                      if (!s || s.type === "idle") return language.t("status.popover.tasks.status.idle")
+                      if (s.type === "busy") return language.t("status.popover.tasks.status.busy")
+                      if (s.type === "retry") return language.t("status.popover.tasks.status.retry")
+                      return language.t("status.popover.tasks.status.idle")
+                    }
+                    const title = () => session.title ?? session.id.slice(0, 8)
+                    return (
+                      <div class="flex items-center gap-2 w-full h-8 pl-3 pr-1.5 py-1 rounded-md">
+                        <Show when={isBusy()} fallback={<div class="size-1.5 rounded-full shrink-0 bg-border-weak-base" />}>
+                          <Spinner class="size-3.5 shrink-0" />
+                        </Show>
+                        <span class="text-14-regular text-text-base truncate flex-1">{title()}</span>
+                        <span class="text-11-regular text-text-weak shrink-0">{statusLabel()}</span>
+                        <Tooltip placement="left" value={language.t("status.popover.tasks.cancel")}>
+                          <button
+                            type="button"
+                            class="flex items-center justify-center size-6 rounded-md hover:bg-surface-raised-base-hover transition-colors shrink-0"
+                            aria-label={language.t("status.popover.tasks.cancel")}
+                            onClick={() => void cancelTask(session.id)}
+                          >
+                            <Icon name="stop" size="small" class="text-icon-weak" />
+                          </button>
+                        </Tooltip>
+                      </div>
+                    )
+                  }}
                 </For>
               </Show>
             </div>

@@ -25,6 +25,10 @@ export function SubagentFooter() {
 
     const siblings = sync.data.session
       .filter((x) => x.parentID === s.parentID)
+      .filter((x) => {
+        const status = sync.data.session_status[x.id]
+        return !!status && status.type !== "idle"
+      })
       .toSorted((a, b) => a.time.created - b.time.created)
     const index = siblings.findIndex((x) => x.id === s.id)
 

@@ -6,6 +6,8 @@ import { MessageV2 } from "../session/message-v2"
 import { Agent } from "../agent/agent"
 import { deriveSubagentSessionPermission } from "../agent/subagent-permissions"
 import type { SessionPrompt } from "../session/prompt"
+import type { TaskTerminalState } from "../session/task-lifecycle"
+import { TaskNotification } from "../session/task-notification"
 import { Config } from "@/config/config"
 import { Effect, Exit, Schema } from "effect"
 import { EffectBridge } from "@/effect/bridge"
@@ -17,6 +19,30 @@ export interface TaskPromptOps {
 }
 
 const id = "task"
+
+const timeoutRegex = /\btime(?:d)?\s*out\b|\btimeout\b/i
+const interruptedRegex = /\babort(?:ed)?\b|\bcancel(?:led)?\b|\binterrupt(?:ed)?\b/i
+
+function getErrorMessage(error: NonNullable<MessageV2.Assistant["error"]>): string {
+  const reason = typeof error.data === "object" && error.data ? (error.data as Record<string, unknown>)["message"] : null
+  if (typeof reason === "string" && reason.trim()) return reason
+  return error.name
+}
+
+function classifyTerminalState(result: MessageV2.WithParts): TaskTerminalState {
+  if (result.info.role !== "assistant" || !result.info.error) return "completed"
+
+  const error = result.info.error
+  const reason = getErrorMessage(error)
+  const loweredName = error.name.toLowerCase()
+
+  if (interruptedRegex.test(reason) || loweredName.includes("abort") || loweredName.includes("cancel")) {
+    return "interrupted"
+  }
+  if (timeoutRegex.test(reason) || loweredName.includes("timeout")) return "timeout"
+
+  return "failed"
+}
 
 export const Parameters = Schema.Struct({
   description: Schema.String.annotate({ description: "A short (3-5 words) description of the task" }),
@@ -136,6 +162,23 @@ export const TaskTool = Tool.define(
               parts,
             })
 
+            const terminalState = classifyTerminalState(result)
+            const terminalReason =
+              result.info.role === "assistant" && result.info.error ? getErrorMessage(result.info.error) : "completed"
+            const terminalNotification: TaskNotification.TaskTerminalNotification = {
+              sessionID: nextSession.id,
+              parentSessionID: ctx.sessionID,
+              state: terminalState,
+              reason: terminalReason,
+              suggestedAction: TaskNotification.suggestAction(terminalState),
+              timestamp: Date.now(),
+            }
+
+            const errorNotice =
+              result.info.role === "assistant" && result.info.error
+                ? `\n\n<task_error>${getErrorMessage(result.info.error)}</task_error>`
+                : ""
+
             return {
               title: params.description,
               metadata: {
@@ -148,6 +191,11 @@ export const TaskTool = Tool.define(
                 "<task_result>",
                 result.parts.findLast((item) => item.type === "text")?.text ?? "",
                 "</task_result>",
+                "",
+                "<task_terminal_notification>",
+                TaskNotification.formatNotificationMessage(terminalNotification),
+                "</task_terminal_notification>",
+                errorNotice,
               ].join("\n"),
             }
           }),

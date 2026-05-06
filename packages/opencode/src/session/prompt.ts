@@ -44,10 +44,11 @@ import { AppFileSystem } from "@opencode-ai/core/filesystem"
 import { Truncate } from "@/tool/truncate"
 import { decodeDataUrl } from "@/util/data-url"
 import { Process } from "@/util/process"
-import { Cause, Effect, Exit, Latch, Layer, Option, Scope, Context, Schema, Types } from "effect"
+import { Cause, Duration, Effect, Exit, Latch, Layer, Option, Scope, Context, Schema, Types } from "effect"
 import * as EffectLogger from "@opencode-ai/core/effect/logger"
 import { InstanceState } from "@/effect/instance-state"
 import { TaskTool, type TaskPromptOps } from "@/tool/task"
+import { DEFAULT_TASK_TIMEOUT_CONFIG } from "@/config/task-timeout"
 import { SessionRunState } from "./run-state"
 import { EffectBridge } from "@/effect/bridge"
 import { RuntimeFlags } from "@/effect/runtime-flags"
@@ -217,7 +218,7 @@ export const layer = Layer.effect(
 
     const cancel = Effect.fn("SessionPrompt.cancel")(function* (sessionID: SessionID) {
       yield* elog.info("cancel", { sessionID })
-      yield* state.cancel(sessionID)
+      yield* state.softCancel(sessionID)
     })
 
     const resolvePromptParts = Effect.fn("SessionPrompt.resolvePromptParts")(function* (template: string) {
@@ -1636,6 +1637,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
 
         while (true) {
           yield* status.set(sessionID, { type: "busy" })
+          yield* state.heartbeat(sessionID)
           yield* slog.info("loop", { step })
 
           let msgs = yield* MessageV2.filterCompactedEffect(sessionID)
@@ -1859,7 +1861,25 @@ NOTE: At any point in time through this workflow you should feel free to ask the
     const loop: (input: LoopInput) => Effect.Effect<MessageV2.WithParts> = Effect.fn("SessionPrompt.loop")(function* (
       input: LoopInput,
     ) {
-      return yield* state.ensureRunning(input.sessionID, lastAssistant(input.sessionID), runLoop(input.sessionID))
+      const executionTimeoutMs =
+        DEFAULT_TASK_TIMEOUT_CONFIG.executionTimeoutMs ?? 300_000
+      const timedWork = runLoop(input.sessionID).pipe(
+        Effect.timeout(Duration.millis(executionTimeoutMs)),
+        Effect.catchTag("TimeoutError", () => {
+          return Effect.gen(function* () {
+            yield* elog.info("session execution timed out", {
+              sessionID: input.sessionID,
+              executionTimeoutMs,
+            })
+            yield* bus.publish(Session.Event.Error, {
+              sessionID: input.sessionID,
+              error: { name: "UnknownError", data: { message: `Task timed out after ${executionTimeoutMs}ms` } },
+            })
+            return yield* lastAssistant(input.sessionID)
+          })
+        }),
+      )
+      return yield* state.ensureRunning(input.sessionID, lastAssistant(input.sessionID), timedWork)
     })
 
     const shell: (input: ShellInput) => Effect.Effect<MessageV2.WithParts> = Effect.fn("SessionPrompt.shell")(

@@ -176,6 +176,7 @@ const TIPS: Tip[] = [
   (shortcuts) => `Use ${commandText("/models", shortcuts.modelList())} to see and switch between available AI models`,
   (shortcuts) => `Use ${commandText("/themes", shortcuts.themeList())} to switch between ${themeCount} built-in themes`,
   (shortcuts) => `Use ${commandText("/new", shortcuts.sessionNew())} to start a fresh conversation session`,
+  `Use {highlight}/tasks{/highlight} to view and cancel running subagent tasks`,
   (shortcuts) => `Use ${commandText("/sessions", shortcuts.sessionList())} to list and continue previous conversations`,
   ...(Flag.OPENCODE_EXPERIMENTAL_SESSION_SWITCHING
     ? ([

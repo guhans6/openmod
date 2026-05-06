@@ -41,6 +41,7 @@ import { DialogThemeList } from "@tui/component/dialog-theme-list"
 import { DialogHelp } from "./ui/dialog-help"
 import { DialogAgent } from "@tui/component/dialog-agent"
 import { DialogSessionList } from "@tui/component/dialog-session-list"
+import { DialogTaskList } from "@tui/component/dialog-task-list"
 import { DialogConsoleOrg } from "@tui/component/dialog-console-org"
 import { ThemeProvider, useTheme } from "@tui/context/theme"
 import { Home } from "@tui/routes/home"
@@ -465,6 +466,16 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
         slashAliases: ["resume", "continue"],
         run: () => {
           dialog.replace(() => <DialogSessionList />)
+        },
+      },
+      {
+        name: "task.list",
+        title: "Running tasks",
+        category: "Session",
+        suggested: sync.data.session.some((item) => !!item.parentID),
+        slashName: "tasks",
+        run: () => {
+          dialog.replace(() => <DialogTaskList />)
         },
       },
       {

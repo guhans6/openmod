@@ -608,7 +608,13 @@ export const dict = {
   "status.popover.tab.mcp": "MCP",
   "status.popover.tab.lsp": "LSP",
   "status.popover.tab.plugins": "Plugins",
+  "status.popover.tab.tasks": "Tasks",
   "status.popover.action.manageServers": "Manage servers",
+  "status.popover.tasks.empty": "No running tasks",
+  "status.popover.tasks.cancel": "Cancel task",
+  "status.popover.tasks.status.busy": "Running",
+  "status.popover.tasks.status.retry": "Retrying",
+  "status.popover.tasks.status.idle": "Idle",
 
   "session.share.popover.title": "Publish on web",
   "session.share.popover.description.shared":

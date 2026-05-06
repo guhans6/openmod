@@ -190,6 +190,16 @@ export function Session() {
       .filter((x) => x.parentID === parentID || x.id === parentID)
       .toSorted((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
   })
+  const activeChildren = createMemo(() => {
+    const parentID = session()?.parentID ?? session()?.id
+    return sync.data.session
+      .filter((x) => x.parentID === parentID)
+      .filter((x) => {
+        const status = sync.data.session_status[x.id]
+        return !!status && status.type !== "idle"
+      })
+      .toSorted((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+  })
   const messages = createMemo(() => sync.data.message[route.sessionID] ?? [])
   const permissions = createMemo(() => {
     if (session()?.parentID) return []
@@ -407,8 +417,8 @@ export function Session() {
   const local = useLocal()
 
   function moveFirstChild() {
-    if (children().length === 1) return
-    const next = children().find((x) => !!x.parentID)
+    if (activeChildren().length === 0) return
+    const next = activeChildren().at(0)
     if (next) {
       navigate({
         type: "session",
@@ -418,10 +428,11 @@ export function Session() {
   }
 
   function moveChild(direction: number) {
-    if (children().length === 1) return
+    const sessions = activeChildren()
+    if (sessions.length === 0) return
 
-    const sessions = children().filter((x) => !!x.parentID)
     let next = sessions.findIndex((x) => x.id === session()?.id) - direction
+    if (next === -1) next = 0
 
     if (next >= sessions.length) next = 0
     if (next < 0) next = sessions.length - 1

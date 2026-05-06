@@ -113,6 +113,22 @@ function reply(input: SessionPrompt.PromptInput, text: string): MessageV2.WithPa
   }
 }
 
+function replyWithError(
+  input: SessionPrompt.PromptInput,
+  text: string,
+  error: NonNullable<MessageV2.Assistant["error"]>,
+): MessageV2.WithParts {
+  const base = reply(input, text)
+  if (base.info.role !== "assistant") throw new Error("assistant reply expected")
+  return {
+    ...base,
+    info: {
+      ...base.info,
+      error,
+    },
+  }
+}
+
 describe("tool.task", () => {
   it.instance(
     "description sorts subagents by name and is stable across calls",
@@ -225,6 +241,8 @@ describe("tool.task", () => {
       expect(kids[0]?.id).toBe(child.id)
       expect(result.metadata.sessionId).toBe(child.id)
       expect(result.output).toContain(`task_id: ${child.id}`)
+      expect(result.output).toContain("<task_terminal_notification>")
+      expect(result.output).toContain("Terminal: completed")
       expect(seen?.sessionID).toBe(child.id)
     }),
   )
@@ -358,7 +376,55 @@ describe("tool.task", () => {
       expect(kids[0]?.id).toBe(result.metadata.sessionId)
       expect(result.metadata.sessionId).not.toBe("ses_missing")
       expect(result.output).toContain(`task_id: ${result.metadata.sessionId}`)
+      expect(result.output).toContain("<task_terminal_notification>")
+      expect(result.output).toContain("Terminal: completed")
       expect(seen?.sessionID).toBe(result.metadata.sessionId)
+    }),
+  )
+
+  it.instance("execute emits timeout terminal notification for timed-out child result", () =>
+    Effect.gen(function* () {
+      const { chat, assistant } = yield* seed()
+      const tool = yield* TaskTool
+      const def = yield* tool.init()
+      const promptOps: TaskPromptOps = {
+        cancel: () => Effect.void,
+        resolvePromptParts: (template) => Effect.succeed([{ type: "text" as const, text: template }]),
+        prompt: (input) =>
+          Effect.succeed(
+            replyWithError(
+              input,
+              "timed out",
+              new MessageV2.APIError({
+                message: "Task timed out after 1000ms",
+                isRetryable: false,
+              }).toObject(),
+            ),
+          ),
+      }
+
+      const result = yield* def.execute(
+        {
+          description: "inspect bug",
+          prompt: "look into the cache key path",
+          subagent_type: "general",
+        },
+        {
+          sessionID: chat.id,
+          messageID: assistant.id,
+          agent: "build",
+          abort: new AbortController().signal,
+          extra: { promptOps },
+          messages: [],
+          metadata: () => Effect.void,
+          ask: () => Effect.void,
+        },
+      )
+
+      expect(result.output).toContain("<task_terminal_notification>")
+      expect(result.output).toContain("Terminal: timeout")
+      expect(result.output).toContain("Suggested: retry")
+      expect(result.output).toContain("<task_error>Task timed out after 1000ms</task_error>")
     }),
   )
 
