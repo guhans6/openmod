@@ -1,0 +1,27 @@
+T18 Anti-Regression Replay: Original Stuck Condition
+
+Objective
+- Reproduce prior "parent waits indefinitely" class and verify deterministic unblock behavior.
+
+Original failure mode (pre-fix)
+- Parent used blocking wait for background task output/session bootstrap and could hang forever when child never reached terminal/session-ready state.
+
+Concrete replay commands executed
+1) cd oh-my-openagent && bun test src/tools/background-task/create-background-output.blocking.test.ts
+   - confirms block=true path exits with timeout note when task remains running
+   - key assertion: output contains "Timed out waiting" and "still running"
+2) cd oh-my-openagent && bun test src/features/background-agent/wait-for-task-session.test.ts
+   - confirms unresolved/running task returns undefined after timeout
+   - confirms terminal error/cancelled/interrupt states return undefined immediately
+3) cd oh-my-openagent && bun test src/tools/delegate-task/unstable-agent-timeout.test.ts
+   - confirms monitored task returns "TIMED OUT" (not false success)
+4) cd oh-my-openagent && bun test src/tools/delegate-task/sync-poll-timeout.test.ts
+   - confirms poll timeout budget is enforced, abort is issued, and control returns
+
+Observed outcome
+- No indefinite wait reproduced.
+- Blocking waits terminate by timeout budget or terminal-state detection.
+- Parent/control flow deterministically recovers with surfaced timeout/error/cancelled signals.
+
+Verdict
+- PASS: Original stuck condition is not reproducible under current behavior.

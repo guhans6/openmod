@@ -1,0 +1,41 @@
+{
+  "active_plan": "/Users/guhan/Guhan/Projects/opencode/.sisyphus/plans/opencode-subagent-recovery.md",
+  "started_at": "2026-05-05T11:17:39.928Z",
+  "session_ids": [
+    "ses_208e4b344ffetGNImGUw1DcW9S"
+  ],
+  "session_origins": {
+    "ses_208e4b344ffetGNImGUw1DcW9S": "direct"
+  },
+  "plan_name": "opencode-subagent-recovery",
+  "agent": "atlas",
+  "task_sessions": {
+    "todo:0": {
+      "task_key": "todo:0",
+      "task_label": "0",
+      "task_title": "Provider/model preflight gate (blocker before subagents)",
+      "session_id": "ses_208224131ffe63vW5TsiyhK5bF",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-05T11:20:03.168Z"
+    },
+    "todo:1": {
+      "task_key": "todo:1",
+      "task_label": "1",
+      "task_title": "Define canonical task lifecycle states and transitions",
+      "session_id": "ses_20816c446ffevG4qMP67uCehk3",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-05T11:40:35.379Z"
+    },
+    "todo:3": {
+      "task_key": "todo:3",
+      "task_label": "3",
+      "task_title": "Extend Ctrl+X task data model for lifecycle diagnostics",
+      "session_id": "ses_2080da948ffefoE614MbRBBCIW",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-05T11:56:36.724Z"
+    }
+  }
+}

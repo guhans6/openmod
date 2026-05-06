@@ -1,0 +1,119 @@
+{
+  "task": "t18-interoperability-matrix",
+  "generated_at_utc": "2026-05-05T16:42:00Z",
+  "status": "pass",
+  "repos": {
+    "opencode_core": "opencode/",
+    "omo_integration": "oh-my-openagent/"
+  },
+  "command_results": [
+    {
+      "repo": "opencode",
+      "command": "bun --cwd packages/opencode test ./test/session/task-lifecycle.test.ts ./test/session/supervision-guardrails.test.ts",
+      "exit_code": 0,
+      "result_summary": "35 pass, 0 fail"
+    },
+    {
+      "repo": "opencode",
+      "command": "bun --cwd packages/opencode test ./test/tool/task.test.ts --test-name-pattern 'execute cancels child session when abort signal fires'",
+      "exit_code": 0,
+      "result_summary": "1 pass, 0 fail"
+    },
+    {
+      "repo": "opencode",
+      "command": "bun --cwd packages/opencode test ./test/session/processor-effect.test.ts --test-name-pattern 'record aborted errors and idle state'",
+      "exit_code": 0,
+      "result_summary": "1 pass, 0 fail"
+    },
+    {
+      "repo": "oh-my-openagent",
+      "command": "bun test src/tools/background-task/create-background-task.test.ts",
+      "exit_code": 0,
+      "result_summary": "3 pass, 0 fail"
+    },
+    {
+      "repo": "oh-my-openagent",
+      "command": "bun test src/tools/background-task/create-background-output.blocking.test.ts",
+      "exit_code": 0,
+      "result_summary": "2 pass, 0 fail"
+    },
+    {
+      "repo": "oh-my-openagent",
+      "command": "bun test src/features/background-agent/wait-for-task-session.test.ts",
+      "exit_code": 0,
+      "result_summary": "7 pass, 0 fail"
+    },
+    {
+      "repo": "oh-my-openagent",
+      "command": "bun test src/features/background-agent/abort-with-timeout.test.ts",
+      "exit_code": 0,
+      "result_summary": "2 pass, 0 fail"
+    },
+    {
+      "repo": "oh-my-openagent",
+      "command": "bun test src/tools/delegate-task/unstable-agent-timeout.test.ts",
+      "exit_code": 0,
+      "result_summary": "1 pass, 0 fail"
+    },
+    {
+      "repo": "oh-my-openagent",
+      "command": "bun test src/tools/delegate-task/sync-poll-timeout.test.ts",
+      "exit_code": 0,
+      "result_summary": "5 pass, 0 fail"
+    },
+    {
+      "repo": "oh-my-openagent",
+      "command": "bun test src/tools/delegate-task/background-task.test.ts --test-name-pattern 'prefers child terminal status over parent abort while waiting for session id|reports failure when manager marks task as error during session startup'",
+      "exit_code": 0,
+      "result_summary": "2 pass, 0 fail"
+    }
+  ],
+  "scenario_matrix": [
+    {
+      "scenario": "success",
+      "core_evidence": [
+        "task-lifecycle allows running -> completed",
+        "processor-effect returns session to idle"
+      ],
+      "omo_evidence": [
+        "create-background-task reports launch success and preserves sibling task launches"
+      ],
+      "result": "pass"
+    },
+    {
+      "scenario": "cancel",
+      "core_evidence": [
+        "task tool test: child session cancel triggered on abort signal"
+      ],
+      "omo_evidence": [
+        "abort-with-timeout resolves/continues cleanup; wait-for-task-session exits on cancelled"
+      ],
+      "result": "pass"
+    },
+    {
+      "scenario": "timeout",
+      "core_evidence": [
+        "task-lifecycle + supervision guardrails validate bounded timeout/watchdog model"
+      ],
+      "omo_evidence": [
+        "blocking output returns timeout note; unstable/sync poll paths emit TIMED OUT and terminate"
+      ],
+      "result": "pass"
+    },
+    {
+      "scenario": "error",
+      "core_evidence": [
+        "processor-effect publishes Session.Event.Error and leaves idle state"
+      ],
+      "omo_evidence": [
+        "blocking output surfaces terminal error; startup error/interrupt become explicit failure"
+      ],
+      "result": "pass"
+    }
+  ],
+  "summary": {
+    "cross_repo_terminal_semantics_consistent": true,
+    "parent_recovery_verified": true,
+    "indefinite_parent_wait_observed": false
+  }
+}
