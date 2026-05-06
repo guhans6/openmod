@@ -8,6 +8,24 @@
   </a>
 </p>
 <p align="center">The open source AI coding agent.</p>
+
+---
+
+> **openmod** — a personal fork of [sst/opencode](https://github.com/sst/opencode) with enhanced subagent lifecycle management and CLI task UX.
+>
+> **What's different:**
+> - Watchdog + execution timeout: subagents auto-recover or are cancelled if they stall
+> - Stale heartbeat detection: long-running tool calls are tracked and flagged
+> - CLI `/tasks` dialog (`Ctrl+X K`): monitor all running subagents from the terminal
+> - `Ctrl+X Down` navigation filters to **active** subagents only (no ghost sessions)
+> - Per-task cancel (`Ctrl+D` ×2) and cancel-all (`Ctrl+Shift+D` ×2)
+> - Soft cancel with grace period before force termination
+>
+> See [`docs/subagent-task-management.md`](docs/subagent-task-management.md) for build & update instructions.
+>
+> **Syncing with upstream:** `git fetch upstream && git rebase upstream/dev`
+
+---
 <p align="center">
   <a href="https://opencode.ai/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
   <a href="https://www.npmjs.com/package/opencode-ai"><img alt="npm" src="https://img.shields.io/npm/v/opencode-ai?style=flat-square" /></a>
